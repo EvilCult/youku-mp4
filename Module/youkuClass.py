@@ -37,7 +37,7 @@ class ChaseYouku :
 		return result
 
 	def __getVideoID(self, link):
-		result = re.findall(r"id_(.*?==)", link)
+		result = re.findall(r"id_(.*)\.html", link)
 		if len(result) > 0 :
 			videoID = result[0]
 		else :
