@@ -33,10 +33,34 @@ def get_parser(url):
     return getClass
 
 
+def download_file(url, title=None):
+    def download_process(count, bsize, tsize):
+        if pbar.start_time is None:
+            pbar.start(tsize)
+        dsize = count * bsize
+        pbar.update(dsize if dsize < tsize else tsize)
+
+    import shutil
+    from urllib import urlretrieve
+
+    from progressbar import ProgressBar, Percentage, Bar, FileTransferSpeed, Timer
+
+    pbar = ProgressBar(
+        widgets=[Percentage(), Bar(), Timer(), ' ', FileTransferSpeed()],
+    )
+    tmp, header = urlretrieve(url, reporthook=download_process)
+    pbar.finish()
+    ext = header.getsubtype().split('-')[1]
+    filename = '%s.%s' % (title, ext)
+    shutil.copyfile(tmp, filename)
+    return filename
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--quality', default='720p', help='Quality: 720p, 480p, 360p')
+    parser.add_argument('--no-download', action='store_true', help='No download, only show download url.')
     parser.add_argument('url', help='video url on youku, tudou, letv, sohu, acfun, bilibili, iqiyi')
     args = parser.parse_args()
 
@@ -45,13 +69,11 @@ if __name__ == '__main__':
     video_parser.videoType = QUALITY[args.quality]
     urlList = video_parser.chaseUrl()
 
-    if urlList['stat'] == 0:
-        if len(urlList['msg']) == 1:
-            frag = urlList['msg']
-        else:
-            count = 0
-            frag = []
-            for url in urlList['msg']:
-                count += 1
-                frag.append('Fragment %s: %s' % (count, url))
-        print('\n'.join(frag))
+    if urlList['stat'] == 0 and urlList['msg']:
+        urls = urlList['msg']
+        for x in range(len(urls)):
+            if args.no_download:
+                print('%s: %s' % (x, urls[x]))
+                continue
+            filename = download_file(urls[x])
+            print('Save as %s' % filename)
