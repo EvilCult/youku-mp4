@@ -61,6 +61,32 @@ def download_file(url, title, info=None):
     shutil.copyfile(tmpfile, outfile)
     return outfile
 
+
+def ffmpeg_merge(dfiles, outfile):
+    cmd = 'ffmpeg'
+    ret = subprocess.check_call([cmd, '-version'])
+    if ret !=0:
+        return
+    ftmp = tempfile.NamedTemporaryFile(prefix=title, delete=False)
+    tmp_file = ftmp.name
+    ftmp.write('\n'.join(['file "%s"' % df for df in dfiles]))
+    ftmp.close()
+    merge = [cmd]
+    merge += ['-f', 'concat']
+    merge += ['-i', tmp_name]
+    merge += ['-c', 'copy']
+    merge.append(outfile)
+    ret = subprocess.call(merge)
+    if ret == 0:
+        os.remove(tmp_file)
+        for df in dfiles:
+            os.remove(df)
+        print('Save as %s' % outfile)
+    else:
+        print('FFMPEG: ', merge)
+        print('Video part:', dfiles)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--quality', default='720p', help='Quality: 720p, 480p, 360p')
@@ -97,21 +123,4 @@ if __name__ == '__main__':
                 shutil.move(dfiles[0], outfile)
                 print('Save as %s' % outfile)
             else:
-                ftmp = tempfile.NamedTemporaryFile(prefix=title, delete=False)
-                tmp_name = ftmp.name
-                ftmp.write('\n'.join(['file "%s"' % df for df in dfiles]))
-                ftmp.close()
-                merge = ['ffmpeg']
-                merge.append('-f concat')
-                merge.append('-i %s' % tmp_name)
-                merge.append('-c copy')
-                merge.append(outfile)
-                ret = subprocess.call(merge)
-                if ret == 0:
-                    os.remove(tmp_name)
-                    for df in dfiles:
-                        os.remove(df)
-                    print('Save as %s' % outfile)
-                else:
-                    print('FFMPEG error: ' + ' '.join(merge))
-                    print('Video part:', dfiles)
+                ffmpeg_merge(dfiles, outfile)
