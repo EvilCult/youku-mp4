@@ -58,24 +58,25 @@ def download_file(url, title, info=None):
     tmp_dir = os.path.dirname(tmpfile)
     ext = os.path.splitext(tmpfile)[1]
     outfile = os.path.join(tmp_dir, title + ext)
-    shutil.copyfile(tmpfile, outfile)
+    shutil.move(tmpfile, outfile)
     return outfile
 
 
 def ffmpeg_merge(dfiles, outfile):
     cmd = 'ffmpeg'
     ret = subprocess.check_call([cmd, '-version'])
-    if ret !=0:
+    if ret != 0:
         return
     ftmp = tempfile.NamedTemporaryFile(prefix=title, delete=False)
     tmp_file = ftmp.name
-    ftmp.write('\n'.join(['file "%s"' % df for df in dfiles]))
+    ftmp.write('\n'.join(['file %s' % os.path.basename(df) for df in dfiles]))
     ftmp.close()
     merge = [cmd]
     merge += ['-f', 'concat']
-    merge += ['-i', tmp_name]
+    merge += ['-i', os.path.relpath(tmp_file)]
     merge += ['-c', 'copy']
     merge.append(outfile)
+    print(' '.join(merge))
     ret = subprocess.call(merge)
     if ret == 0:
         os.remove(tmp_file)
@@ -91,6 +92,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--quality', default='720p', help='Quality: 720p, 480p, 360p')
     parser.add_argument('--no-download', action='store_true', help='No download, only show download url.')
+    parser.add_argument('--output', help='output filename')
     parser.add_argument('url', help='video url on youku, tudou, letv, sohu, acfun, bilibili, iqiyi')
     args = parser.parse_args()
 
@@ -106,6 +108,10 @@ if __name__ == '__main__':
         total = len(urls)
         tl = len(str(total))
         tfmt = '%%0%dd' % tl
+        tmp_dir = 'video_tmp'
+        if not os.path.exists(tmp_dir):
+            os.mkdir(tmp_dir)
+        tempfile.tempdir = tmp_dir
         for x in range(total):
             if args.no_download:
                 print((tfmt + ': %s') % (x + 1, urls[x]))
@@ -118,7 +124,10 @@ if __name__ == '__main__':
             dfiles.append(filename)
         if dfiles:
             ext = os.path.splitext(dfiles[0])[1]
-            outfile = title + ext
+            if args.output:
+                outfile = args.output
+            else:
+                outfile = title + ext
             if len(dfiles) == 1:
                 shutil.move(dfiles[0], outfile)
                 print('Save as %s' % outfile)
